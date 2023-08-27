@@ -7,6 +7,6 @@ This uses many types of encoding method and encryption methods to make life a mi
 - Compile code using py_compile
 - Many base64 encoders used
 
-`python Bluepill-Obfuscator.py`
-`Drag and drop a file to the terminal`
+- ```python Bluepill-Obfuscator.py```
+- ```Drag and drop a file to the terminal```
 
