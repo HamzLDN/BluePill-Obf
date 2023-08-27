@@ -95,6 +95,6 @@ py_compile.compile(filename[:-3] + '-blueobf.py', cfile=filename[:-3] + '-blueob
 os.remove(filename[:-3] + '-blueobf.py')
 
 try:
-    input("File created at " + filename[:-3]+'-blueobf.py')
+    input("File created at " + filename[:-3]+'-blueobf.pyc')
 except Exception as e:
     input(e)
