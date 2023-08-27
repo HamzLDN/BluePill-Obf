@@ -1,5 +1,5 @@
 import base64, random, zlib, string, sys
-if len(sys.argv) !=1:
+if len(sys.argv) <= 1:
     filename = input("Please drag a file into this terminal\n")
 else:
     filename = sys.argv[1]
