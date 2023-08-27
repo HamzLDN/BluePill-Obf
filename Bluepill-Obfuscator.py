@@ -48,7 +48,6 @@ class BlueObf:
         if encode_type == 2:return base64.b32encode(text)
         if encode_type == 3:return base64.b16encode(text)
         if encode_type == 4:return base64.b85encode(text)
-        base64.
 
     def enc_layer1(self) -> bytes:
         for i in range(5):
