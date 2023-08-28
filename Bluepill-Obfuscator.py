@@ -1,4 +1,4 @@
-import base64, random, zlib, string, sys, py_compile, os
+import base64, random, zlib, string, sys, py_compile, os,time
 if len(sys.argv) <= 1:
     filename = input("Please drag a file into this terminal\n")
 else:
@@ -7,26 +7,37 @@ with open(filename, 'rb') as data:
     data = data.read()
 splitlines = data.split(b"\n")
 
-modules = b""
-for imports in splitlines:
-    if (imports.startswith(b"import") or imports.startswith(b"from")):
-        modules += imports
-
+def get_imports():
+    modules = b""
+    for imports in splitlines:
+        if (imports.startswith(b"import") or imports.startswith(b"from")):
+            modules += imports + b"\n"
+    return modules
+def print_loading_bar(number):
+    bar_length = 25
+    percent = number / 100
+    fill_length = int(percent * bar_length)
+    empty_length = bar_length - fill_length
+    new_bar = '=' * fill_length
+    bar = f"[{new_bar[:-1]}>{' ' * empty_length}]"
+    return bar
 bluepill= """
 import base64;import zlib
-x = {{
+x = {
     "__dev__":"HamzLDN",
     "__git__": "https://github.com/HamzLDN",
     "__tiktok__": "@youarepwned"
-}}
+}
 class BluePill:
-    def __init__(self, code:bytes) -> None:self.code=code
+    def __init__(self, code:bytes,passcode:bytes) -> None:self.code=code;self.passcode=passcode;self.c=compile
     def tunnel(self, text, key) -> bytes: return bytes([byte ^ key[i % len(key)] for i, byte in enumerate(text)])
-    def run(self) -> bytes: return compile(self.tunnel(zlib.decompress(base64.b85decode(self.code)), {}), 'string', 'exec')
+    def run(self) -> bytes: return self.c(self.tunnel(zlib.decompress(base64.b85decode(self.code)), self.passcode), 'string', 'exec')
 """
        # return exec(self.tunnel(dm(b6.b85decode(self.code)), {}))
 
-key = ''.join(random.choice(string.ascii_letters) for _ in range(10)).encode('utf-8')
+key = ''.join(random.choice(string.ascii_letters) for _ in range(10000)).encode('utf-8')
+
+
 class BlueObf:
     def __init__(self,data):
         self.data = data
@@ -57,44 +68,41 @@ class BlueObf:
         if encode_type == 4:return base64.b85encode(text)
 
     def enc_layer1(self) -> bytes:
-        for i in range(5):
+        loop = random.randint(3,10)
+        start = time.time()
+        for i in range(loop):
             num = random.randint(1,4)
             encoder = b''
             if num==3:encoder = self.b16
             if num==2:encoder = self.b32
             if num==1:encoder = self.b64
             if num==4:encoder = self.b85
-            if i!=0: self.data = b'exec(compile(base64.' + encoder + b'("' + self.obf_rand(self.data, num) + b'"), "string", "exec"))';continue
-            self.data = self.anti_skid_message + self.anti_skid + b'exec(compile(base64.' + encoder + b'("' + self.obf_rand(self.data, num) + b'"), "string", "exec"))'
-        self.data = base64.b85encode(zlib.compress(self.xor(self.data, key))); return self.data
-    
-    def randomizer(self):
-        # Randomize the variables
-        chunk_size = random.randint(2, 10)
-        chunks = [self.data[i:i+chunk_size] for i in range(0, len(self.data), chunk_size)]
-        new_val = []
-        for i, values in enumerate(chunks, start=1):
-            var_len = self.var_gen(10)
-            self.vars.append(var_len)
-            new_val.append("{} = '{}'".format(var_len ,values))
+            percent = (i/loop)
+            if i!=0: self.data = b'exec(compile(base64.' + encoder + b'("' + self.obf_rand(self.data, num) + b'"), "string", "exec"))'
+            else: self.data = self.anti_skid_message + self.anti_skid + b'exec(compile(base64.' + encoder + b'("' + self.obf_rand(self.data, num) + b'"), "string", "exec"))'
+            print(f"{print_loading_bar(int(percent * 100))}  Percent: ({int(percent*100)}%)", end='\r')
+        self.data = base64.b85encode(zlib.compress(self.xor(self.data, key)))
+        print(f"{print_loading_bar(int(100))}  Percent: ({int(100)}%)\n", end='\r')
+        print("This can take around", int(time.time()-start), "seconds for the code to run")
+        return self.data
 
-        random.shuffle(new_val)
-        code = ";".join(new_val) + "\n" + 'exec(' + '+'.join(self.vars) + ')'
-        return base64.a85encode(code.encode('utf-8'))
 
+
+
+
+print("Obfuscating")
 code = BlueObf(data).enc_layer1()
-payload = modules + b"\n" +bluepill.format(key).encode('utf-8') + b"exec(BluePill('''"+code+b"''').run())"
+payload = get_imports() + b"\n" +bluepill.encode('utf-8') + b"exec(BluePill('''"+code.replace(b'\0', b'')+b"''', b'" + key + b"').run())"
 
 with open(filename[:-3] + '-blueobf.py','wb') as f:
     f.write(payload)
+compiler = False
+if compiler:
+    py_compile.compile(filename[:-3] + '-blueobf.py', cfile=filename[:-3] + '-blueobf.pyc')
 
-
-
-py_compile.compile(filename[:-3] + '-blueobf.py', cfile=filename[:-3] + '-blueobf.pyc')
-
-os.remove(filename[:-3] + '-blueobf.py')
+    os.remove(filename[:-3] + '-blueobf.py')
 
 try:
-    input("File created at " + filename[:-3]+'-blueobf.pyc')
+    input("File created at " + filename[:-3]+'-blueobf.py')
 except Exception as e:
     input(e)
