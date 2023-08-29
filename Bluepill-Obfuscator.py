@@ -1,13 +1,16 @@
-import base64, random, zlib, string, sys, py_compile, os,time
-if len(sys.argv) <= 1:
-    filename = input("Please drag a file into this terminal\n")
-else:
-    filename = sys.argv[1]
-with open(filename, 'rb') as data:
-    data = data.read()
-splitlines = data.split(b"\n")
+import base64, random, zlib, string, sys, py_compile, os,time,site
 
-def get_imports():
+def get_file_data():
+    if len(sys.argv) <= 1:
+        filename = input("Please drag a file into this terminal\n")
+    else:
+        filename = sys.argv[1]
+    with open(filename, 'rb') as data:
+        data = data.read()
+    return data.split(b"\n"), data, filename
+
+key = ''.join(random.choice(string.ascii_letters) for _ in range(10000)).encode('utf-8')
+def get_imports(splitlines: list):
     modules = b""
     for imports in splitlines:
         if (imports.startswith(b"import") or imports.startswith(b"from")):
@@ -35,7 +38,7 @@ class BluePill:
 """
        # return exec(self.tunnel(dm(b6.b85decode(self.code)), {}))
 
-key = ''.join(random.choice(string.ascii_letters) for _ in range(10000)).encode('utf-8')
+
 
 
 class BlueObf:
@@ -67,17 +70,16 @@ class BlueObf:
         if encode_type == 3:return base64.b16encode(text)
         if encode_type == 4:return base64.b85encode(text)
 
-    def enc_layer1(self) -> bytes:
-        loop = random.randint(3,10)
+    def enc_layer1(self, layers) -> bytes:
         start = time.time()
-        for i in range(loop):
+        for i in range(layers):
             num = random.randint(1,4)
             encoder = b''
             if num==3:encoder = self.b16
             if num==2:encoder = self.b32
             if num==1:encoder = self.b64
             if num==4:encoder = self.b85
-            percent = (i/loop)
+            percent = (i/layers)
             if i!=0: self.data = b'exec(compile(base64.' + encoder + b'("' + self.obf_rand(self.data, num) + b'"), "string", "exec"))'
             else: self.data = self.anti_skid_message + self.anti_skid + b'exec(compile(base64.' + encoder + b'("' + self.obf_rand(self.data, num) + b'"), "string", "exec"))'
             print(f"{print_loading_bar(int(percent * 100))}  Percent: ({int(percent*100)}%)", end='\r')
@@ -88,21 +90,61 @@ class BlueObf:
 
 
 
+def compile_2_exe(filename, icon, exename):
+    PyInstaller.__main__.run([
+        '--name='+exename,
+        '--onefile',
+        '--icon='+icon,
+        '--distpath='+os.getcwd(),
+        filename + '-blueobf.py'
+    ])
+    os.remove(filename + '-blueobf.py')
+if __name__ == '__main__':
+    compile2pyc = False
+    compile2exe = False
+    icon = None
+    exename = ""
+    try:
+        import PyInstaller.__main__
+    except:
+        pyinst = input("pyinstaller is not installed... would you like to install it? [y/N]").lower()
+        if pyinst == "y":
+            print("Installing pyinstaller")
+            if os.name == "nt": os.popen("pip install pyinstaller > NUL 2>&1")
+            else: os.popen("pip install pyinstaller > /dev/null 2>&1")
+            print("Installed")
+    exe = input("Would you like to convert it to an exe [y/N]").lower()
+    if exe == "y":
+        compile2exe = True
+    if not compile2exe:
+        pyc = input("Would you like to convert it to a pyc [Y/n]").lower()
+        if pyc == "y":
+            compile2pyc = True
+    else:
+        exename = input("Please give your exe a name: ")
+    layersofenc = input("How many layers would you want to encrypt? Default random 3-10. Anything above 10 is not recommended").lower()
+    try:
+        layers = int(layersofenc)
+    except:
+        layers = random.randint(3,10)
+        print("Invalid integer. Using {} layers".format(layers))
+    addicon = input("Please add an icon file path. Type N for NONE").lower()
+    if addicon != "y":
+        icon = "NONE"
+    else:
+        icon = addicon
 
-
-print("Obfuscating")
-code = BlueObf(data).enc_layer1()
-payload = get_imports() + b"\n" +bluepill.encode('utf-8') + b"exec(BluePill('''"+code.replace(b'\0', b'')+b"''', b'" + key + b"').run())"
-
-with open(filename[:-3] + '-blueobf.py','wb') as f:
-    f.write(payload)
-compiler = False
-if compiler:
-    py_compile.compile(filename[:-3] + '-blueobf.py', cfile=filename[:-3] + '-blueobf.pyc')
-
-    os.remove(filename[:-3] + '-blueobf.py')
-
-try:
-    input("File created at " + filename[:-3]+'-blueobf.py')
-except Exception as e:
-    input(e)
+    modules, data, filename = get_file_data()
+    code = BlueObf(data).enc_layer1(layers)
+    payload = get_imports(modules) + b"\n" +bluepill.encode('utf-8') + b"exec(BluePill('''"+code.replace(b'\0', b'')+b"''', b'" + key + b"').run())"
+    filename = filename[:-3]
+    with open(filename+ '-blueobf.py','wb') as f:
+        f.write(payload)
+    if compile2pyc:
+        print("INTERESTING")
+        py_compile.compile(filename + '-blueobf.py', cfile=filename + '-blueobf.pyc')
+        os.remove(filename + '-blueobf.py')
+    if compile2exe:
+        print("FILENAME:",filename)
+        compile_2_exe(filename, icon, exename)
+    input("File created at " + filename + '-blueobf.py')
