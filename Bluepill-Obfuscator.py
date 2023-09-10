@@ -9,7 +9,7 @@ def get_file_data():
         data = data.read()
     return data.split(b"\n"), data, filename
 
-key = ''.join(random.choice(string.ascii_letters) for _ in range(10000)).encode('utf-8')
+
 def get_imports(splitlines: list):
     modules = b""
     for imports in splitlines:
@@ -24,23 +24,21 @@ def print_loading_bar(number):
     new_bar = '=' * fill_length
     bar = f"[{new_bar[:-1]}>{' ' * empty_length}]"
     return bar
-bluepill= """
+def gateway():
+    return """
 import base64;import zlib
-x = {
+x = {{
     "__dev__":"HamzLDN",
     "__git__": "https://github.com/HamzLDN",
     "__tiktok__": "@youarepwned"
-}
+}}
 class BluePill:
-    def __init__(self, code:bytes,passcode:bytes) -> None:self.code=code;self.passcode=passcode;self.c=compile
+    def __init__(self, code:bytes,passcode:bytes) -> None:self.code=code;self.passcode=passcode;self.c=compile;self.gate = ""
     def tunnel(self, text, key) -> bytes: return bytes([byte ^ key[i % len(key)] for i, byte in enumerate(text)])
-    def run(self) -> bytes: return self.c(self.tunnel(zlib.decompress(base64.b85decode(self.code)), self.passcode), 'string', 'exec')
+    def run(self) -> bytes: {};return self.gate
 """
-       # return exec(self.tunnel(dm(b6.b85decode(self.code)), {}))
 
-
-
-
+# self.gate = self.c(self.tunnel(zlib.decompress(base64.b85decode(self.code)), self.passcode), 'string', 'exec')
 class BlueObf:
     def __init__(self,data):
         self.data = data
@@ -83,10 +81,12 @@ class BlueObf:
             if i!=0: self.data = b'exec(compile(base64.' + encoder + b'("' + self.obf_rand(self.data, num) + b'"), "string", "exec"))'
             else: self.data = self.anti_skid_message + self.anti_skid + b'exec(compile(base64.' + encoder + b'("' + self.obf_rand(self.data, num) + b'"), "string", "exec"))'
             print(f"{print_loading_bar(int(percent * 100))}  Percent: ({int(percent*100)}%)", end='\r')
+        if len(self.data) < 10000: key = ''.join(random.choice(string.ascii_letters) for _ in range(len(self.data))).encode('utf-8')
+        else:key = ''.join(random.choice(string.ascii_letters) for _ in range(10000)).encode('utf-8')
         self.data = base64.b85encode(zlib.compress(self.xor(self.data, key)))
         print(f"{print_loading_bar(int(100))}  Percent: ({int(100)}%)\n", end='\r')
         print("This can take around", int(time.time()-start), "seconds for the code to run")
-        return self.data
+        return self.data, key
 
 
 
@@ -99,9 +99,11 @@ def compile_2_exe(filename, icon, exename):
         filename + '-blueobf.py'
     ])
     os.remove(filename + '-blueobf.py')
-if __name__ == '__main__':
+def main():
+    bluepill = gateway()
     compile2pyc = False
     compile2exe = False
+    addicon = ""
     icon = None
     exename = ""
     try:
@@ -118,33 +120,45 @@ if __name__ == '__main__':
         compile2exe = True
     if not compile2exe:
         pyc = input("Would you like to convert it to a pyc [Y/n]").lower()
-        if pyc == "y":
+        if pyc == "y" or not pyc:
             compile2pyc = True
     else:
         exename = input("Please give your exe a name: ")
+        addicon = input("Please add an icon file path. Type N for NONE").lower()
     layersofenc = input("How many layers would you want to encrypt? Default random 3-10. Anything above 10 is not recommended").lower()
     try:
         layers = int(layersofenc)
     except:
         layers = random.randint(3,10)
         print("Invalid integer. Using {} layers".format(layers))
-    addicon = input("Please add an icon file path. Type N for NONE").lower()
-    if addicon != "y":
+    
+    if addicon == "n":
         icon = "NONE"
     else:
         icon = addicon
 
     modules, data, filename = get_file_data()
-    code = BlueObf(data).enc_layer1(layers)
+    code, key = BlueObf(data).enc_layer1(layers)
+    entry = "self.gate = self.c(self.tunnel(zlib.decompress(base64.b85decode(self.code)), self.passcode), 'string', 'exec')"
+    string = []
+    for info in entry:
+        string.append("chr("+str(ord(info))+")")
+    entry = "exec('exec(" + ("+".join(string)) + ")')"
+    bluepill = bluepill.format(entry)
     payload = get_imports(modules) + b"\n" +bluepill.encode('utf-8') + b"exec(BluePill('''"+code.replace(b'\0', b'')+b"''', b'" + key + b"').run())"
     filename = filename[:-3]
     with open(filename+ '-blueobf.py','wb') as f:
         f.write(payload)
     if compile2pyc:
-        print("INTERESTING")
         py_compile.compile(filename + '-blueobf.py', cfile=filename + '-blueobf.pyc')
         os.remove(filename + '-blueobf.py')
+        input("File created at " + filename + '-blueobf.pyc')
+        return 0
     if compile2exe:
         print("FILENAME:",filename)
         compile_2_exe(filename, icon, exename)
+        input("File created at " + filename + '-blueobf.exe')
+        return 0
     input("File created at " + filename + '-blueobf.py')
+    return 0
+main()
